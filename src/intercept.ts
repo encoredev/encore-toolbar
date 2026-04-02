@@ -9,7 +9,9 @@ export function patchFetch(): void {
     input: RequestInfo | URL,
     init?: RequestInit
   ): Promise<Response> {
-    const method = (init?.method ?? "GET").toUpperCase();
+    const method = (
+      init?.method ?? (input instanceof Request ? input.method : "GET")
+    ).toUpperCase();
     const url =
       input instanceof Request
         ? input.url
