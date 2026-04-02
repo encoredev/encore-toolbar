@@ -14,10 +14,8 @@
 
     <script type="module" src="/src/main.ts"></script>
     <script>
-      // Mock endpoint that returns x-encore-trace-id
-      // In dev, we intercept using a service worker or just test against a real backend.
-      // For quick testing, we override fetch to return mock headers.
-      const realFetch = window.__realFetch || window.fetch;
+      // Buttons trigger real fetch/XHR calls. To see traces appear,
+      // point these at an Encore backend that returns x-encore-trace-id headers.
       document.getElementById("fetch-btn").addEventListener("click", () => {
         fetch("/api/mock-endpoint");
       });
