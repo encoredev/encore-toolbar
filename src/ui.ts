@@ -6,6 +6,14 @@ function truncate(str: string, max: number): string {
   return str.length > max ? str.slice(0, max) + "..." : str;
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function getStyles(): string {
   return `
     :host {
@@ -189,9 +197,9 @@ export function createWidget(): void {
       .map(
         (t) => `
         <div class="trace-entry">
-          <span class="method">${t.method}</span>
-          <span class="url" title="${t.url}">${truncate(t.url, 40)}</span>
-          <a class="trace-link" href="${TRACE_BASE_URL}${t.traceId}" target="_blank" rel="noopener">trace &rarr;</a>
+          <span class="method">${escapeHtml(t.method)}</span>
+          <span class="url" title="${escapeHtml(t.url)}">${escapeHtml(truncate(t.url, 40))}</span>
+          <a class="trace-link" href="${TRACE_BASE_URL}${encodeURIComponent(t.traceId)}" target="_blank" rel="noopener">trace &rarr;</a>
         </div>
       `
       )
