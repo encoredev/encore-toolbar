@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Encore Trace Widget — Dev</title>
+  </head>
+  <body>
+    <h1>Encore Trace Widget Dev Harness</h1>
+    <p>Click the buttons to simulate requests with trace headers.</p>
+
+    <button id="fetch-btn">Simulate fetch</button>
+    <button id="xhr-btn">Simulate XHR</button>
+
+    <script type="module" src="/src/main.ts"></script>
+    <script>
+      // Mock endpoint that returns x-encore-trace-id
+      // In dev, we intercept using a service worker or just test against a real backend.
+      // For quick testing, we override fetch to return mock headers.
+      const realFetch = window.__realFetch || window.fetch;
+      document.getElementById("fetch-btn").addEventListener("click", () => {
+        fetch("/api/mock-endpoint");
+      });
+      document.getElementById("xhr-btn").addEventListener("click", () => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", "/api/mock-xhr");
+        xhr.send();
+      });
+    </script>
+  </body>
+</html>
