@@ -1,8 +1,14 @@
 export interface TraceEntry {
   method: string;
   url: string;
+  status: number;
   traceId: string;
   timestamp: number;
+  requestBody?: string;
+  responseBody?: string;
+  queryParams?: Record<string, string>;
+  cookies?: Record<string, string>;
+  pageHref: string;
 }
 
 const MAX_ENTRIES = 50;
@@ -22,6 +28,17 @@ export function addTrace(entry: TraceEntry): void {
 
 export function getTraces(): readonly TraceEntry[] {
   return entries;
+}
+
+export function updateTraceBody(
+  traceId: string,
+  responseBody: string | undefined,
+): void {
+  const entry = entries.find((e) => e.traceId === traceId);
+  if (entry) {
+    entry.responseBody = responseBody;
+    listeners.forEach((fn) => fn());
+  }
 }
 
 export function subscribe(fn: Listener): () => void {

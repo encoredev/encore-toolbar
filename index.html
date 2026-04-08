@@ -3,26 +3,60 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Encore Trace Widget — Dev</title>
+    <title>Encore Toolbar — Dev</title>
   </head>
   <body>
-    <h1>Encore Trace Widget Dev Harness</h1>
-    <p>Click the buttons to simulate requests with trace headers.</p>
+    <h1>Encore Toolbar Dev Harness</h1>
+    <p>Click the buttons to make requests to the Encore backend.</p>
 
-    <button id="fetch-btn">Simulate fetch</button>
-    <button id="xhr-btn">Simulate XHR</button>
+    <button id="ping-btn">GET /api/ping</button>
+    <button id="echo-btn">POST /api/echo</button>
+    <button id="time-btn">GET /api/time</button>
+    <button id="users-btn">GET /api/users</button>
+    <button id="users-query-btn">GET /api/users?page=2&limit=5</button>
+    <button id="me-btn">GET /api/me (authed)</button>
+    <button id="me-noauth-btn">GET /api/me (no token)</button>
+    <button id="greet-btn">GET /api/greet/:name</button>
+    <button id="greet-long-btn">GET /api/greet/:name (long)</button>
+    <button id="fail-btn">GET /api/fail (404)</button>
 
     <script type="module" src="/src/main.ts"></script>
     <script>
-      // Buttons trigger real fetch/XHR calls. To see traces appear,
-      // point these at an Encore backend that returns x-encore-trace-id headers.
-      document.getElementById("fetch-btn").addEventListener("click", () => {
-        fetch("/api/mock-endpoint");
+      document.getElementById("ping-btn").addEventListener("click", () => {
+        fetch("/api/ping");
       });
-      document.getElementById("xhr-btn").addEventListener("click", () => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("GET", "/api/mock-xhr");
-        xhr.send();
+      document.getElementById("echo-btn").addEventListener("click", () => {
+        fetch("/api/echo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: "hello from toolbar" }),
+        });
+      });
+      document.getElementById("time-btn").addEventListener("click", () => {
+        fetch("/api/time");
+      });
+      document.getElementById("users-btn").addEventListener("click", () => {
+        fetch("/api/users");
+      });
+      document.getElementById("users-query-btn").addEventListener("click", () => {
+        fetch("/api/users?page=2&limit=5");
+      });
+      document.getElementById("me-btn").addEventListener("click", () => {
+        fetch("/api/me", {
+          headers: { "Authorization": "Bearer test-token-alice" },
+        });
+      });
+      document.getElementById("me-noauth-btn").addEventListener("click", () => {
+        fetch("/api/me");
+      });
+      document.getElementById("greet-btn").addEventListener("click", () => {
+        fetch("/api/greet/world");
+      });
+      document.getElementById("greet-long-btn").addEventListener("click", () => {
+        fetch("/api/greet/this-is-a-very-long-name-parameter-to-test-truncation-in-the-toolbar");
+      });
+      document.getElementById("fail-btn").addEventListener("click", () => {
+        fetch("/api/fail");
       });
     </script>
   </body>
