@@ -67,8 +67,17 @@ export interface DaemonApp {
   offline?: boolean;
 }
 
+let appsCache: { apps: DaemonApp[]; ts: number } | null = null;
+const CACHE_TTL = 5000;
+
 export function listApps(): Promise<DaemonApp[]> {
-  return daemonRpc("list-apps");
+  if (appsCache && Date.now() - appsCache.ts < CACHE_TTL) {
+    return Promise.resolve(appsCache.apps);
+  }
+  return daemonRpc("list-apps").then((apps: DaemonApp[]) => {
+    appsCache = { apps, ts: Date.now() };
+    return apps;
+  });
 }
 
 // --- Trace logs ---
