@@ -11,19 +11,95 @@ export interface TraceEntry {
   pageHref: string;
 }
 
-const MAX_ENTRIES = 50;
+const STORAGE_KEY = "encore-toolbar-traces";
+const SETTINGS_KEY = "encore-toolbar-settings";
+
+export interface Settings {
+  maxTraces: number;
+  showLogTime: boolean;
+  persistTraces: boolean;
+}
+
+const DEFAULT_SETTINGS: Settings = {
+  maxTraces: 25,
+  showLogTime: false,
+  persistTraces: false,
+};
+
+let settings: Settings = loadSettings();
+
+function loadSettings(): Settings {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+  } catch {}
+  return { ...DEFAULT_SETTINGS };
+}
+
+function saveSettings(): void {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+export function getSettings(): Settings {
+  return { ...settings };
+}
+
+export function updateSettings(partial: Partial<Settings>): void {
+  settings = { ...settings, ...partial };
+  saveSettings();
+
+  if (entries.length > settings.maxTraces) {
+    entries.length = settings.maxTraces;
+  }
+
+  if (settings.persistTraces) {
+    persistEntries();
+  } else {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+
+  notifyListeners();
+}
 
 type Listener = () => void;
 
-const entries: TraceEntry[] = [];
+let entries: TraceEntry[] = loadEntries(settings);
 const listeners: Set<Listener> = new Set();
+
+function loadEntries(s: Settings): TraceEntry[] {
+  if (!s.persistTraces) return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as TraceEntry[];
+      return parsed.slice(0, s.maxTraces);
+    }
+  } catch {}
+  return [];
+}
+
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+
+function persistEntries(): void {
+  if (!settings.persistTraces) return;
+  if (persistTimer) return;
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  }, 500);
+}
+
+function notifyListeners(): void {
+  listeners.forEach((fn) => fn());
+}
 
 export function addTrace(entry: TraceEntry): void {
   entries.unshift(entry);
-  if (entries.length > MAX_ENTRIES) {
-    entries.pop();
+  if (entries.length > settings.maxTraces) {
+    entries.length = settings.maxTraces;
   }
-  listeners.forEach((fn) => fn());
+  persistEntries();
+  notifyListeners();
 }
 
 export function getTraces(): readonly TraceEntry[] {
@@ -37,7 +113,8 @@ export function updateTraceBody(
   const entry = entries.find((e) => e.traceId === traceId);
   if (entry) {
     entry.responseBody = responseBody;
-    listeners.forEach((fn) => fn());
+    persistEntries();
+    notifyListeners();
   }
 }
 
