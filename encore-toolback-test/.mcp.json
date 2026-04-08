@@ -1,0 +1,12 @@
+{
+    "mcpServers": {
+        "encore-mcp": {
+            "args": [
+                "mcp",
+                "run",
+                "--app=encore-toolback-test-7afi"
+            ],
+            "command": "encore"
+        }
+    }
+}
