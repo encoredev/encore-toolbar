@@ -41,6 +41,28 @@ function parseCookies(): Record<string, string> | undefined {
   return Object.keys(cookies).length > 0 ? cookies : undefined;
 }
 
+function buildTraceEntry(opts: {
+  method: string;
+  url: string;
+  status: number;
+  traceId: string;
+  requestBody?: string;
+  responseBody?: string;
+}): TraceEntry {
+  return {
+    method: opts.method,
+    url: opts.url,
+    status: opts.status,
+    traceId: opts.traceId,
+    timestamp: Date.now(),
+    requestBody: truncateBody(opts.requestBody),
+    responseBody: truncateBody(opts.responseBody),
+    queryParams: parseQueryParams(opts.url),
+    cookies: parseCookies(),
+    pageHref: window.location.href,
+  };
+}
+
 export function patchFetch(): void {
   const originalFetch = window.fetch;
 
@@ -71,20 +93,8 @@ export function patchFetch(): void {
 
       const traceId = response.headers.get(TRACE_HEADER);
       if (traceId) {
-        const entry: TraceEntry = {
-          method,
-          url,
-          status: response.status,
-          traceId,
-          timestamp: Date.now(),
-          requestBody: truncateBody(requestBody),
-          queryParams: parseQueryParams(url),
-          cookies: parseCookies(),
-          pageHref: window.location.href,
-        };
-        addTrace(entry);
+        addTrace(buildTraceEntry({ method, url, status: response.status, traceId, requestBody }));
 
-        // Read response body asynchronously — don't block the caller
         response
           .clone()
           .text()
@@ -94,11 +104,12 @@ export function patchFetch(): void {
 
       return response;
     } catch (err) {
-      // Never swallow errors from the original fetch — re-throw as-is
       throw err;
     }
   };
 }
+
+const xhrMeta = new WeakMap<XMLHttpRequest, { method: string; url: string }>();
 
 export function patchXHR(): void {
   const originalOpen = XMLHttpRequest.prototype.open;
@@ -109,8 +120,7 @@ export function patchXHR(): void {
     url: string | URL,
     ...rest: any[]
   ) {
-    (this as any).__encoreMethod = method.toUpperCase();
-    (this as any).__encoreUrl = resolveUrl(url.toString());
+    xhrMeta.set(this, { method: method.toUpperCase(), url: resolveUrl(url.toString()) });
     return originalOpen.apply(this, [method, url, ...rest] as any);
   };
 
@@ -120,18 +130,15 @@ export function patchXHR(): void {
       try {
         const traceId = this.getResponseHeader(TRACE_HEADER);
         if (traceId) {
-          const xhrUrl = (this as any).__encoreUrl ?? "";
-          addTrace({
-            method: (this as any).__encoreMethod ?? "GET",
-            url: xhrUrl,
+          const meta = xhrMeta.get(this);
+          addTrace(buildTraceEntry({
+            method: meta?.method ?? "GET",
+            url: meta?.url ?? "",
             status: this.status,
             traceId,
-            timestamp: Date.now(),
-            requestBody: truncateBody(requestBody),
-            responseBody: truncateBody(this.responseText || undefined),
-            queryParams: parseQueryParams(xhrUrl),
-            cookies: parseCookies(),
-          });
+            requestBody,
+            responseBody: this.responseText || undefined,
+          }));
         }
       } catch {
         // Never let toolbar errors propagate to the host
