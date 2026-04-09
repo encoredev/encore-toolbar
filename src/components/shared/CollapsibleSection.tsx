@@ -1,6 +1,7 @@
 import { JSX } from "preact";
 import { useState, useRef } from "preact/hooks";
 import { ChevronIcon, CopyIcon } from "./icons";
+import { copyToClipboard } from "../../utils";
 
 interface Props {
   label: string;
@@ -16,11 +17,8 @@ export function CollapsibleSection({ label, defaultOpen = false, copyText, child
 
   function handleCopy(e: MouseEvent): void {
     e.stopPropagation();
-    if (!copyText) return;
-    navigator.clipboard.writeText(copyText).then(() => {
-      copyBtnRef.current?.classList.add("copied");
-      setTimeout(() => copyBtnRef.current?.classList.remove("copied"), 1500);
-    });
+    if (!copyText || !copyBtnRef.current) return;
+    copyToClipboard(copyBtnRef.current, copyText);
   }
 
   return (

@@ -1,5 +1,26 @@
-import { useState, useEffect } from "preact/hooks";
+import { useState, useEffect, useRef } from "preact/hooks";
 import { getTraces, subscribe, getSettings, updateSettings as storeUpdateSettings, type TraceEntry, type Settings } from "./store";
+
+export function useClickOutside(
+  ref: { current: HTMLElement | null },
+  active: boolean,
+  onClose: () => void
+): void {
+  const callbackRef = useRef(onClose);
+  callbackRef.current = onClose;
+
+  useEffect(() => {
+    if (!active) return;
+    function handleClick(e: MouseEvent): void {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        callbackRef.current();
+      }
+    }
+    const root = ref.current?.getRootNode() as ShadowRoot | Document;
+    root.addEventListener("click", handleClick as EventListener);
+    return () => root.removeEventListener("click", handleClick as EventListener);
+  }, [active]);
+}
 
 export function useTraces(): readonly TraceEntry[] {
   const [traces, setTraces] = useState(getTraces);

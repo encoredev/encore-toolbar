@@ -1,5 +1,6 @@
 import { JSX } from "preact";
-import { useState, useEffect, useRef } from "preact/hooks";
+import { useState, useRef } from "preact/hooks";
+import { useClickOutside } from "../../hooks";
 
 interface Props {
   trigger: JSX.Element;
@@ -11,17 +12,7 @@ export function Dropdown({ trigger, children, className }: Props): JSX.Element {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent): void {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    const root = ref.current?.getRootNode() as ShadowRoot | Document;
-    root.addEventListener("click", handleClick as EventListener);
-    return () => root.removeEventListener("click", handleClick as EventListener);
-  }, [open]);
+  useClickOutside(ref, open, () => setOpen(false));
 
   return (
     <div ref={ref} class={className ?? "method-dropdown"} style={{ position: "relative" }}>

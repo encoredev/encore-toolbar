@@ -1,10 +1,12 @@
 import { JSX } from "preact";
 
-export type Position = "bottom-right" | "bottom-left" | "top-right" | "top-left" | "side-right" | "side-left";
+export type Position = "bottom-right" | "bottom-left" | "top-right" | "top-left" | "middle-right" | "middle-left" | "side-right" | "side-left";
 
 const FLOATING_POSITIONS: { key: Position; label: string }[] = [
   { key: "top-left", label: "Top left" },
   { key: "top-right", label: "Top right" },
+  { key: "middle-left", label: "Middle left" },
+  { key: "middle-right", label: "Middle right" },
   { key: "bottom-left", label: "Bottom left" },
   { key: "bottom-right", label: "Bottom right" },
 ];
@@ -17,6 +19,7 @@ const FIXED_POSITIONS: { key: Position; label: string }[] = [
 interface Props {
   position: Position;
   onPositionChange: (pos: Position) => void;
+  onHide: () => void;
 }
 
 function PositionGrid({ items, current, onChange }: { items: typeof FLOATING_POSITIONS; current: Position; onChange: (p: Position) => void }): JSX.Element {
@@ -37,7 +40,7 @@ function PositionGrid({ items, current, onChange }: { items: typeof FLOATING_POS
   );
 }
 
-export function Placement({ position, onPositionChange }: Props): JSX.Element {
+export function Placement({ position, onPositionChange, onHide }: Props): JSX.Element {
   return (
     <div class="settings-page">
       <div class="settings-section">
@@ -47,6 +50,9 @@ export function Placement({ position, onPositionChange }: Props): JSX.Element {
       <div class="settings-section">
         <div class="settings-label">Fixed</div>
         <PositionGrid items={FIXED_POSITIONS} current={position} onChange={onPositionChange} />
+      </div>
+      <div class="settings-section">
+        <button class="hide-btn" onClick={onHide}>Hide until reload</button>
       </div>
     </div>
   );

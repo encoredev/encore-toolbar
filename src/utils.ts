@@ -58,3 +58,29 @@ export function isLocalUrl(url: string): boolean {
   const h = safeParseUrl(url)?.hostname;
   return h === "localhost" || h === "127.0.0.1";
 }
+
+export function isSuccess(status: number): boolean {
+  return status < 400;
+}
+
+export function startDrag(
+  e: MouseEvent,
+  onDrag: (e: MouseEvent) => void,
+  onEnd?: () => void
+): void {
+  e.preventDefault();
+  const el = e.currentTarget as HTMLElement;
+  el.classList.add("dragging");
+
+  const onMouseMove = (ev: MouseEvent) => onDrag(ev);
+
+  const onMouseUp = () => {
+    el.classList.remove("dragging");
+    onEnd?.();
+    document.removeEventListener("mousemove", onMouseMove);
+    document.removeEventListener("mouseup", onMouseUp);
+  };
+
+  document.addEventListener("mousemove", onMouseMove);
+  document.addEventListener("mouseup", onMouseUp);
+}

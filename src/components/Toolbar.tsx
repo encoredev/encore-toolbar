@@ -3,12 +3,13 @@ import { useState, useRef, useEffect, useMemo } from "preact/hooks";
 import { useTraces, useSettings } from "../hooks";
 import { TraceList } from "./TraceList";
 import { DetailPane } from "./DetailPane";
-import { Filters, filterTraces, type FilterState } from "./Filters";
+import { Filters, filterTraces, DEFAULT_FILTER, type FilterState } from "./Filters";
 import { Settings } from "./Settings";
 import { Placement, type Position } from "./Placement";
 import { AppIdInput } from "./AppIdInput";
+import { Tab } from "./shared/Tab";
 import { CloseIcon, GearIcon, InfoIcon, ENCORE_LOGO } from "./shared/icons";
-import { isLocalUrl } from "../utils";
+import { isLocalUrl, startDrag } from "../utils";
 
 const REMOTE_TRACE_BASE_URL = "https://app.encore.dev/trace/";
 const DEFAULT_PANEL_WIDTH = 450;
@@ -24,6 +25,7 @@ export function Toolbar({ appId: initialAppId, envName }: ToolbarProps): JSX.Ele
   const allTraces = useTraces();
   const [settings] = useSettings();
   const [isOpen, setIsOpen] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
   const [activeTab, setActiveTab] = useState<"traces" | "placement">("traces");
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
   const [appId, setAppId] = useState(initialAppId ?? "");
@@ -36,13 +38,40 @@ export function Toolbar({ appId: initialAppId, envName }: ToolbarProps): JSX.Ele
       parseInt(localStorage.getItem("encore-toolbar-width") ?? "", 10) || DEFAULT_PANEL_WIDTH))
   );
 
-  const [filter, setFilter] = useState<FilterState>({
-    selectedMethods: new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]),
-    pathRegex: null,
-    errorsOnly: false,
-  });
+  const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER);
+  const [seenCount, setSeenCount] = useState(0);
+  const seenTraceIds = useRef(new Set<string>());
 
   const filteredTraces = useMemo(() => filterTraces(allTraces, filter), [allTraces, filter]);
+
+  // Compute which traces should animate (not yet seen)
+  const newTraceIds = useMemo(() => {
+    if (!isOpen || activeTab !== "traces") return new Set<string>();
+    const ids = new Set<string>();
+    for (const t of filteredTraces) {
+      if (!seenTraceIds.current.has(t.traceId)) {
+        ids.add(t.traceId);
+      }
+    }
+    return ids;
+  }, [filteredTraces, isOpen, activeTab]);
+
+  // Update badge count whenever traces change while viewing
+  useEffect(() => {
+    if (isOpen && activeTab === "traces") {
+      setSeenCount(allTraces.length);
+    }
+  }, [isOpen, activeTab, allTraces.length]);
+
+  // Sync seenTraceIds only on panel open / tab switch (not on every trace)
+  // so that newTraceIds stays stable during the animation window
+  useEffect(() => {
+    if (isOpen && activeTab === "traces") {
+      for (const t of allTraces) {
+        seenTraceIds.current.add(t.traceId);
+      }
+    }
+  }, [isOpen, activeTab]);
 
   const isSidebar = position === "side-right" || position === "side-left";
 
@@ -88,36 +117,22 @@ export function Toolbar({ appId: initialAppId, envName }: ToolbarProps): JSX.Ele
 
   // Panel resize (sidebar mode)
   function handlePanelResizeStart(e: MouseEvent): void {
-    if (!isSidebar) return;
-    e.preventDefault();
-    const resizeEl = e.currentTarget as HTMLElement;
-    resizeEl.classList.add("dragging");
-
-    const onMouseMove = (ev: MouseEvent) => {
+    startDrag(e, (ev) => {
       let newWidth = position === "side-right"
         ? window.innerWidth - ev.clientX
         : ev.clientX;
       newWidth = Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, newWidth));
       setPanelWidth(newWidth);
-    };
-
-    const onMouseUp = () => {
-      resizeEl.classList.remove("dragging");
-      localStorage.setItem("encore-toolbar-width", String(panelWidth));
-      document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", onMouseUp);
-    };
-
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
+    }, () => localStorage.setItem("encore-toolbar-width", String(panelWidth)));
   }
 
-  function getTraceUrl(traceId: string, requestUrl: string): string {
+  function getTraceUrl(traceId: string, requestUrl: string): string | null {
     const aid = appId.trim();
-    if (isLocalUrl(requestUrl) && aid) {
+    if (!aid) return null;
+    if (isLocalUrl(requestUrl)) {
       return `http://localhost:9400/${encodeURIComponent(aid)}/envs/local/traces/${encodeURIComponent(traceId)}`;
     }
-    if (aid && envName) {
+    if (envName) {
       return `https://app.encore.cloud/${encodeURIComponent(aid)}/envs/${encodeURIComponent(envName)}/traces/${encodeURIComponent(traceId)}`;
     }
     return `${REMOTE_TRACE_BASE_URL}${encodeURIComponent(traceId)}`;
@@ -156,6 +171,14 @@ export function Toolbar({ appId: initialAppId, envName }: ToolbarProps): JSX.Ele
         toggleStyle.top = "16px"; toggleStyle.left = "16px";
         panelStyle.top = "64px"; panelStyle.left = "16px";
         break;
+      case "middle-right":
+        toggleStyle.top = "50%"; toggleStyle.right = "16px"; toggleStyle.transform = "translateY(-50%)";
+        panelStyle.top = "50%"; panelStyle.right = "16px"; panelStyle.transform = "translateY(-50%)";
+        break;
+      case "middle-left":
+        toggleStyle.top = "50%"; toggleStyle.left = "16px"; toggleStyle.transform = "translateY(-50%)";
+        panelStyle.top = "50%"; panelStyle.left = "16px"; panelStyle.transform = "translateY(-50%)";
+        break;
     }
   }
 
@@ -177,34 +200,23 @@ export function Toolbar({ appId: initialAppId, envName }: ToolbarProps): JSX.Ele
   const traceListRef = useRef<HTMLDivElement>(null);
 
   function handleDragStart(e: MouseEvent): void {
-    e.preventDefault();
-    const dragEl = e.currentTarget as HTMLElement;
-    dragEl.classList.add("dragging");
-
-    const onMouseMove = (ev: MouseEvent) => {
+    startDrag(e, (ev) => {
       if (!bodyRef.current || !traceListRef.current) return;
       const rect = bodyRef.current.getBoundingClientRect();
       const x = ev.clientX - rect.left;
       const pct = Math.max(15, Math.min(85, (x / rect.width) * 100));
       traceListRef.current.style.width = `${pct}%`;
-    };
-
-    const onMouseUp = () => {
-      dragEl.classList.remove("dragging");
-      document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", onMouseUp);
-    };
-
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
+    });
   }
+
+  if (isHidden) return <></>;
 
   return (
     <>
       {/* Toggle button */}
       <button class="toggle" style={toggleStyle} onClick={() => setIsOpen(!isOpen)}>
         <span dangerouslySetInnerHTML={{ __html: ENCORE_LOGO }} />
-        <span class="badge">{allTraces.length > 0 ? allTraces.length : ""}</span>
+        <span class="badge">{allTraces.length - seenCount > 0 ? allTraces.length - seenCount : ""}</span>
       </button>
 
       {/* Panel */}
@@ -225,8 +237,8 @@ export function Toolbar({ appId: initialAppId, envName }: ToolbarProps): JSX.Ele
 
         {/* Tabs */}
         <div class="panel-header">
-          <button class={`tab${activeTab === "traces" ? " active" : ""}`} onClick={() => setActiveTab("traces")}>Traces</button>
-          <button class={`tab${activeTab === "placement" ? " active" : ""}`} onClick={() => setActiveTab("placement")}>Placement</button>
+          <Tab active={activeTab === "traces"} onClick={() => setActiveTab("traces")}>Traces</Tab>
+          <Tab active={activeTab === "placement"} onClick={() => setActiveTab("placement")}>Placement</Tab>
         </div>
 
         {/* Traces page */}
@@ -251,6 +263,7 @@ export function Toolbar({ appId: initialAppId, envName }: ToolbarProps): JSX.Ele
                     selectedTraceId={selectedTraceId}
                     traceUrl={getTraceUrl}
                     onSelect={setSelectedTraceId}
+                    newTraceIds={newTraceIds}
                   />
                 </div>
                 {selectedTrace && (
@@ -259,7 +272,7 @@ export function Toolbar({ appId: initialAppId, envName }: ToolbarProps): JSX.Ele
                     <div class="detail-pane" style={{ display: "flex" }}>
                       <DetailPane
                         trace={selectedTrace}
-                        traceUrl={getTraceUrl(selectedTrace.traceId, selectedTrace.url)}
+                        traceUrl={getTraceUrl(selectedTrace.traceId, selectedTrace.url) ?? null}
                         appId={appId.trim()}
                         showLogTime={settings.showLogTime}
                         onClose={() => setSelectedTraceId(null)}
@@ -274,7 +287,7 @@ export function Toolbar({ appId: initialAppId, envName }: ToolbarProps): JSX.Ele
 
         {/* Placement page */}
         {activeTab === "placement" && (
-          <Placement position={position} onPositionChange={handlePositionChange} />
+          <Placement position={position} onPositionChange={handlePositionChange} onHide={() => setIsHidden(true)} />
         )}
 
         {/* Panel resize handle (sidebar) */}

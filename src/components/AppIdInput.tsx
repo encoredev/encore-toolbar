@@ -1,5 +1,6 @@
 import { JSX } from "preact";
 import { useState, useEffect, useRef } from "preact/hooks";
+import { useClickOutside } from "../hooks";
 import { listApps, type DaemonApp } from "../daemon";
 
 interface Props {
@@ -21,17 +22,7 @@ export function AppIdInput({ initialValue, onChange }: Props): JSX.Element {
 
   useEffect(() => { fetchApps(); }, []);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent): void {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    const root = wrapperRef.current?.getRootNode() as ShadowRoot | Document;
-    root.addEventListener("click", handleClick as EventListener);
-    return () => root.removeEventListener("click", handleClick as EventListener);
-  }, [open]);
+  useClickOutside(wrapperRef, open, () => setOpen(false));
 
   const query = value.trim().toLowerCase();
   const filtered = apps.filter(
@@ -64,7 +55,7 @@ export function AppIdInput({ initialValue, onChange }: Props): JSX.Element {
       />
       {open && filtered.length > 0 && (
         <div class="app-id-dropdown dropdown-menu open">
-          <div class="app-id-hint">Fill in the Encore App ID to make linking work better</div>
+          <div class="app-id-hint">Fill in the Encore App ID (found in the URL on app.encore.cloud) to enable trace linking</div>
           {filtered.map((a) => (
             <div key={a.id} class="app-id-option" onClick={() => selectApp(a.id)}>
               <span class={`app-dot ${a.offline ? "offline" : "online"}`} />

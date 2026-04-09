@@ -1,7 +1,7 @@
 import { JSX } from "preact";
 import { useState, useRef } from "preact/hooks";
 import { CopyIcon } from "./shared/icons";
-import { formatJson } from "../utils";
+import { formatJson, copyToClipboard } from "../utils";
 import type { TraceEntry } from "../store";
 
 interface Props {
@@ -28,10 +28,8 @@ export function Prompts({ trace }: Props): JSX.Element {
   }
 
   function handleCopy(): void {
-    navigator.clipboard.writeText(getPromptText()).then(() => {
-      copyBtnRef.current?.classList.add("copied");
-      setTimeout(() => copyBtnRef.current?.classList.remove("copied"), 1500);
-    });
+    if (!copyBtnRef.current) return;
+    copyToClipboard(copyBtnRef.current, getPromptText());
   }
 
   return (

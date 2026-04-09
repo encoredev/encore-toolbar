@@ -49,7 +49,7 @@ export function updateSettings(partial: Partial<Settings>): void {
   saveSettings();
 
   if (entries.length > settings.maxTraces) {
-    entries.length = settings.maxTraces;
+    entries = entries.slice(0, settings.maxTraces);
   }
 
   if (settings.persistTraces) {
@@ -94,9 +94,9 @@ function notifyListeners(): void {
 }
 
 export function addTrace(entry: TraceEntry): void {
-  entries.unshift(entry);
+  entries = [entry, ...entries];
   if (entries.length > settings.maxTraces) {
-    entries.length = settings.maxTraces;
+    entries = entries.slice(0, settings.maxTraces);
   }
   persistEntries();
   notifyListeners();
@@ -110,9 +110,11 @@ export function updateTraceBody(
   traceId: string,
   responseBody: string | undefined,
 ): void {
-  const entry = entries.find((e) => e.traceId === traceId);
-  if (entry) {
-    entry.responseBody = responseBody;
+  const idx = entries.findIndex((e) => e.traceId === traceId);
+  if (idx >= 0) {
+    entries = entries.map((e, i) =>
+      i === idx ? { ...e, responseBody } : e
+    );
     persistEntries();
     notifyListeners();
   }

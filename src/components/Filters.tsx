@@ -2,6 +2,7 @@ import { JSX } from "preact";
 import { useState, useCallback } from "preact/hooks";
 import { Dropdown } from "./shared/Dropdown";
 import { CheckIcon } from "./shared/icons";
+import { isSuccess } from "../utils";
 import type { TraceEntry } from "../store";
 
 const ALL_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
@@ -12,9 +13,15 @@ export interface FilterState {
   errorsOnly: boolean;
 }
 
+export const DEFAULT_FILTER: FilterState = {
+  selectedMethods: new Set(ALL_METHODS),
+  pathRegex: null,
+  errorsOnly: false,
+};
+
 export function filterTraces(traces: readonly TraceEntry[], f: FilterState): TraceEntry[] {
   return traces.filter((t) => {
-    if (f.errorsOnly && t.status < 400) return false;
+    if (f.errorsOnly && isSuccess(t.status)) return false;
     if (!f.selectedMethods.has(t.method)) return false;
     if (f.pathRegex && !f.pathRegex.test(t.url)) return false;
     return true;
