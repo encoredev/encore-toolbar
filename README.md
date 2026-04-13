@@ -2,7 +2,7 @@
 
 A lightweight, drop-in script that adds a floating developer panel to any frontend that talks to an [Encore](https://encore.dev) backend. It intercepts every `fetch()` and `XMLHttpRequest`, captures the `x-encore-trace-id` response header, and lets you jump straight from a request to its trace in the [Development Dashboard](https://encore.dev/docs/ts/observability/dev-dash) or [Encore Cloud](https://app.encore.cloud).
 
-<video src="https://encore.dev/assets/videos/encore-toolbar.mp4" controls muted loop autoplay playsinline width="100%"></video>
+<video src="https://encore.dev/assets/videos/encore-toolbar.mp4" controls muted loop></video>
 
 ## Install
 
@@ -95,8 +95,15 @@ This repo builds the toolbar bundle.
 
 ```bash
 npm install
-npm run dev    # local dev harness with a sample Encore backend
+npm run dev    # local dev harness
 npm run build  # produces dist/encore-toolbar.js (IIFE, no dependencies)
+```
+
+For the dev harness to actually capture traces, start the bundled sample Encore backend in a second terminal:
+
+```bash
+cd encore-toolback-test
+encore run
 ```
 
 The bundle is a single self-executing script intended to be served at `https://encore.dev/encore-toolbar.js`. The entire UI lives inside a Shadow DOM so host-page styles cannot leak in.
