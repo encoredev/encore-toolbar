@@ -1,4 +1,5 @@
 import { api, APIError } from "encore.dev/api";
+import { appMeta } from "encore.dev";
 import log from "encore.dev/log";
 
 interface PingResponse {
@@ -57,7 +58,12 @@ interface User {
 
 interface UsersResponse {
   users: User[];
-  pagination: { page: number; perPage: number; total: number; totalPages: number };
+  pagination: {
+    page: number;
+    perPage: number;
+    total: number;
+    totalPages: number;
+  };
   meta: { requestId: string; latencyMs: number };
 }
 
