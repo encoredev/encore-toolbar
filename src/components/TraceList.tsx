@@ -51,7 +51,7 @@ export function TraceList({ traces, selectedTraceId, traceUrl, onSelect, newTrac
                         setTimeout(() => el.classList.remove("show-hint"), 2500);
                       }}>
                         trace &rarr;
-                        <span class="trace-link-tooltip">Fill in App ID to enable trace linking</span>
+                        <span class="trace-link-tooltip">Trace link could not be created, see docs for more info</span>
                       </span>
                   }
                 </td>

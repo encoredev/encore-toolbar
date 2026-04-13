@@ -69,10 +69,6 @@ export function LogViewer({ traceId, appId, showLogTime }: Props): JSX.Element {
       });
   }, [traceId, appId]);
 
-  if (!appId) {
-    return <div class="log-empty">Set the App ID above to fetch backend logs</div>;
-  }
-
   if (!state || state.state === "loading") {
     return <div class="log-loading">Loading logs...</div>;
   }

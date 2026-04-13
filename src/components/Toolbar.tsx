@@ -21,14 +21,19 @@ export interface ToolbarProps {
   envName?: string;
 }
 
-export function Toolbar({ appId: initialAppId, envName }: ToolbarProps): JSX.Element {
+export function Toolbar({ appId: initialAppId, envName: initialEnvName }: ToolbarProps): JSX.Element {
   const allTraces = useTraces();
   const [settings] = useSettings();
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(() => localStorage.getItem("encore-toolbar-open") === "true");
   const [isHidden, setIsHidden] = useState(false);
   const [activeTab, setActiveTab] = useState<"traces" | "placement">("traces");
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
-  const [appId, setAppId] = useState(initialAppId ?? "");
+  const [appId, setAppIdRaw] = useState(() => initialAppId ?? localStorage.getItem("encore-toolbar-app-id") ?? "");
+  const [envName, setEnvNameRaw] = useState(() => initialEnvName ?? localStorage.getItem("encore-toolbar-env-name") ?? "");
+
+  function setAppId(v: string): void { setAppIdRaw(v); localStorage.setItem("encore-toolbar-app-id", v); }
+  function setEnvName(v: string): void { setEnvNameRaw(v); localStorage.setItem("encore-toolbar-env-name", v); }
+  const [, forceRender] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [position, setPosition] = useState<Position>(
     () => (localStorage.getItem("encore-toolbar-position") as Position) || "bottom-right"
@@ -38,10 +43,9 @@ export function Toolbar({ appId: initialAppId, envName }: ToolbarProps): JSX.Ele
       parseInt(localStorage.getItem("encore-toolbar-width") ?? "", 10) || DEFAULT_PANEL_WIDTH))
   );
 
-  const [, forceRender] = useState(0);
   const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER);
-  const [seenCount, setSeenCount] = useState(0);
-  const seenTraceIds = useRef(new Set<string>());
+  const [seenCount, setSeenCount] = useState(() => allTraces.length);
+  const seenTraceIds = useRef(new Set(allTraces.map((t) => t.traceId)));
 
   const filteredTraces = useMemo(() => filterTraces(allTraces, filter), [allTraces, filter]);
 
@@ -118,13 +122,14 @@ export function Toolbar({ appId: initialAppId, envName }: ToolbarProps): JSX.Ele
 
   // Panel resize (sidebar mode)
   function handlePanelResizeStart(e: MouseEvent): void {
+    let lastWidth = panelWidth;
     startDrag(e, (ev) => {
-      let newWidth = position === "side-right"
+      lastWidth = position === "side-right"
         ? window.innerWidth - ev.clientX
         : ev.clientX;
-      newWidth = Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, newWidth));
-      setPanelWidth(newWidth);
-    }, () => localStorage.setItem("encore-toolbar-width", String(panelWidth)));
+      lastWidth = Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, lastWidth));
+      setPanelWidth(lastWidth);
+    }, () => localStorage.setItem("encore-toolbar-width", String(lastWidth)));
   }
 
   const getTraceUrl = useCallback((traceId: string, requestUrl: string): string | null => {
@@ -133,9 +138,8 @@ export function Toolbar({ appId: initialAppId, envName }: ToolbarProps): JSX.Ele
       resolveAppInfo(requestUrl).then(() => forceRender((n) => n + 1));
       return null;
     }
-
     let slug = info?.appSlug || appId.trim();
-    const env = info?.envName || (envName ?? "").trim();
+    const env = info?.envName || envName.trim();
 
     // Daemon fallback: local request, no healthz slug, no manual App ID.
     if (!slug && isLocalUrl(requestUrl)) {
@@ -231,7 +235,7 @@ export function Toolbar({ appId: initialAppId, envName }: ToolbarProps): JSX.Ele
   return (
     <>
       {/* Toggle button */}
-      <button class="toggle" style={toggleStyle} onClick={() => setIsOpen(!isOpen)}>
+      <button class="toggle" style={toggleStyle} onClick={() => { const next = !isOpen; setIsOpen(next); localStorage.setItem("encore-toolbar-open", String(next)); }}>
         <span dangerouslySetInnerHTML={{ __html: ENCORE_LOGO }} />
         <span class="badge">{allTraces.length - seenCount > 0 ? allTraces.length - seenCount : ""}</span>
       </button>
@@ -248,8 +252,7 @@ export function Toolbar({ appId: initialAppId, envName }: ToolbarProps): JSX.Ele
               <a href="https://encore.dev/docs" target="_blank" rel="noopener">Docs</a>
             </div>
           </span>
-          <AppIdInput initialValue={initialAppId} onChange={setAppId} />
-          <button class="close-btn" onClick={() => setIsOpen(false)}><CloseIcon /></button>
+          <button class="close-btn" style={{ marginLeft: "auto" }} onClick={() => { setIsOpen(false); localStorage.setItem("encore-toolbar-open", "false"); }}><CloseIcon /></button>
         </div>
 
         {/* Tabs */}
@@ -267,7 +270,14 @@ export function Toolbar({ appId: initialAppId, envName }: ToolbarProps): JSX.Ele
                 <GearIcon /> Settings
               </button>
             </div>
-            {settingsOpen && <Settings />}
+            {settingsOpen && (
+              <>
+                <Settings />
+                <div class="trace-settings open" style={{ display: "flex" }}>
+                  <AppIdInput initialAppId={appId} initialEnvName={envName} onAppIdChange={setAppId} onEnvNameChange={setEnvName} />
+                </div>
+              </>
+            )}
             <Filters onChange={setFilter} />
 
             {allTraces.length === 0 ? (
@@ -287,13 +297,23 @@ export function Toolbar({ appId: initialAppId, envName }: ToolbarProps): JSX.Ele
                   <>
                     <div class="drag-handle" onMouseDown={handleDragStart as any} />
                     <div class="detail-pane" style={{ display: "flex" }}>
-                      <DetailPane
-                        trace={selectedTrace}
-                        traceUrl={getTraceUrl(selectedTrace.traceId, selectedTrace.url) ?? null}
-                        appId={appId.trim()}
-                        showLogTime={settings.showLogTime}
-                        onClose={() => setSelectedTraceId(null)}
-                      />
+                      {(() => {
+                        const info = getAppInfo(selectedTrace.url);
+                        const resolved = info !== null && info !== "pending" ? info : null;
+                        const env = resolved?.envName || envName.trim();
+                        const isLocal = env === "local";
+                        const slug = resolved?.appSlug || appId.trim();
+                        return (
+                          <DetailPane
+                            trace={selectedTrace}
+                            traceUrl={getTraceUrl(selectedTrace.traceId, selectedTrace.url)}
+                            appId={slug}
+                            isLocalEnv={isLocal}
+                            showLogTime={settings.showLogTime}
+                            onClose={() => setSelectedTraceId(null)}
+                          />
+                        );
+                      })()}
                     </div>
                   </>
                 )}

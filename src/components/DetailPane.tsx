@@ -13,11 +13,12 @@ interface Props {
   trace: TraceEntry;
   traceUrl: string | null;
   appId: string;
+  isLocalEnv: boolean;
   showLogTime: boolean;
   onClose: () => void;
 }
 
-export function DetailPane({ trace, traceUrl, appId, showLogTime, onClose }: Props): JSX.Element {
+export function DetailPane({ trace, traceUrl, appId, isLocalEnv, showLogTime, onClose }: Props): JSX.Element {
   const [activeTab, setActiveTab] = useState<"request" | "prompts">("request");
 
   return (
@@ -35,7 +36,7 @@ export function DetailPane({ trace, traceUrl, appId, showLogTime, onClose }: Pro
                 setTimeout(() => el.classList.remove("show-hint"), 2500);
               }}>
                 View trace &rarr;
-                <span class="trace-link-tooltip">Fill in App ID to enable trace linking</span>
+                <span class="trace-link-tooltip">Trace link could not be created, see docs for more info</span>
               </span>
           }
         </div>
@@ -74,9 +75,11 @@ export function DetailPane({ trace, traceUrl, appId, showLogTime, onClose }: Pro
               <JsonViewer raw={trace.responseBody} />
             </CollapsibleSection>
 
-            <CollapsibleSection label="Backend Logs" defaultOpen>
-              <LogViewer traceId={trace.traceId} appId={appId} showLogTime={showLogTime} />
-            </CollapsibleSection>
+            {isLocalEnv && (
+              <CollapsibleSection label="Backend Logs" defaultOpen>
+                <LogViewer traceId={trace.traceId} appId={appId} showLogTime={showLogTime} />
+              </CollapsibleSection>
+            )}
           </div>
         </div>
       )}

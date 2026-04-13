@@ -84,7 +84,6 @@
 }
 
 .app-id-wrapper {
-  margin-left: 12px;
   position: relative;
   flex: 1;
 }
@@ -95,7 +94,7 @@
   font-family: "Geist Mono", "SF Mono", monospace;
   color: var(--color-text);
   background: transparent;
-  border: 1px solid var(--color-border);
+  border: 1px solid hsla(0,0%,100%,0.25);
   border-radius: 6px;
   padding: 3px 8px;
   outline: none;
@@ -103,7 +102,7 @@
 }
 
 .mono-input:focus {
-  border-color: hsla(0,0%,100%,0.3);
+  border-color: hsla(0,0%,100%,0.45);
 }
 
 .mono-input::placeholder {
@@ -115,20 +114,31 @@
   box-sizing: border-box;
 }
 
-.app-id-input::placeholder {
-  color: var(--color-error);
+.app-id-row {
+  display: flex;
+  gap: 8px;
 }
 
-.app-id-input.filled::placeholder {
+.app-id-field {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+}
+
+.app-id-input::placeholder {
   color: #555;
 }
 
 .app-id-hint {
-  padding: 6px 10px;
+  padding: 0 0 6px;
   font-size: 10px;
   color: #888;
   line-height: 1.4;
-  border-bottom: 1px solid var(--color-bg-muted);
+}
+
+.app-id-hint a {
+  color: var(--color-text);
+  text-decoration: underline;
 }
 
 /* Shared dropdown class */
