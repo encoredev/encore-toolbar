@@ -80,6 +80,15 @@ export function listApps(): Promise<DaemonApp[]> {
   });
 }
 
+export interface AppStatus {
+  running: boolean;
+  addr?: string;
+}
+
+export function getAppStatus(appId: string): Promise<AppStatus> {
+  return daemonRpc("status", { app_id: appId }).then((r: AppStatus) => r);
+}
+
 // --- Trace logs ---
 
 export interface LogEntry {
