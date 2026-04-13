@@ -2,7 +2,7 @@
 
 A lightweight, drop-in script that adds a floating developer panel to any frontend that talks to an [Encore](https://encore.dev) backend. It intercepts every `fetch()` and `XMLHttpRequest`, captures the `x-encore-trace-id` response header, and lets you jump straight from a request to its trace in the [Development Dashboard](https://encore.dev/docs/ts/observability/dev-dash) or [Encore Cloud](https://app.encore.cloud).
 
-https://encore.dev/assets/videos/encore-toolbar.mp4
+https://github.com/user-attachments/assets/4b7f6c44-eaf9-4c4c-a68a-554f24e8c621
 
 ## Install
 
