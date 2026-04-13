@@ -1,5 +1,5 @@
 import { JSX } from "preact";
-import { useState, useRef, useEffect, useMemo } from "preact/hooks";
+import { useState, useRef, useEffect, useMemo, useCallback } from "preact/hooks";
 import { useTraces, useSettings } from "../hooks";
 import { TraceList } from "./TraceList";
 import { DetailPane } from "./DetailPane";
@@ -10,8 +10,8 @@ import { AppIdInput } from "./AppIdInput";
 import { Tab } from "./shared/Tab";
 import { CloseIcon, GearIcon, InfoIcon, ENCORE_LOGO } from "./shared/icons";
 import { isLocalUrl, startDrag } from "../utils";
+import { getAppInfo, resolveAppInfo, resolveLocalAppSlug, awaitLocalAppSlug } from "../appinfo";
 
-const REMOTE_TRACE_BASE_URL = "https://app.encore.dev/trace/";
 const DEFAULT_PANEL_WIDTH = 450;
 const MIN_PANEL_WIDTH = 300;
 const MAX_PANEL_WIDTH = 800;
@@ -38,6 +38,7 @@ export function Toolbar({ appId: initialAppId, envName }: ToolbarProps): JSX.Ele
       parseInt(localStorage.getItem("encore-toolbar-width") ?? "", 10) || DEFAULT_PANEL_WIDTH))
   );
 
+  const [, forceRender] = useState(0);
   const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER);
   const [seenCount, setSeenCount] = useState(0);
   const seenTraceIds = useRef(new Set<string>());
@@ -126,17 +127,33 @@ export function Toolbar({ appId: initialAppId, envName }: ToolbarProps): JSX.Ele
     }, () => localStorage.setItem("encore-toolbar-width", String(panelWidth)));
   }
 
-  function getTraceUrl(traceId: string, requestUrl: string): string | null {
-    const aid = appId.trim();
-    if (!aid) return null;
+  const getTraceUrl = useCallback((traceId: string, requestUrl: string): string | null => {
+    const info = getAppInfo(requestUrl);
+    if (info === "pending") {
+      resolveAppInfo(requestUrl).then(() => forceRender((n) => n + 1));
+      return null;
+    }
+
+    let slug = info?.appSlug || appId.trim();
+    const env = info?.envName || (envName ?? "").trim();
+
+    // Daemon fallback: local request, no healthz slug, no manual App ID.
+    if (!slug && isLocalUrl(requestUrl)) {
+      const local = resolveLocalAppSlug(requestUrl);
+      if (local === "pending") {
+        awaitLocalAppSlug(requestUrl).then(() => forceRender((n) => n + 1));
+        return null;
+      }
+      if (local) slug = local;
+    }
+
+    if (!slug) return null;
     if (isLocalUrl(requestUrl)) {
-      return `http://localhost:9400/${encodeURIComponent(aid)}/envs/local/traces/${encodeURIComponent(traceId)}`;
+      return `http://localhost:9400/${encodeURIComponent(slug)}/envs/local/traces/${encodeURIComponent(traceId)}`;
     }
-    if (envName) {
-      return `https://app.encore.cloud/${encodeURIComponent(aid)}/envs/${encodeURIComponent(envName)}/traces/${encodeURIComponent(traceId)}`;
-    }
-    return `${REMOTE_TRACE_BASE_URL}${encodeURIComponent(traceId)}`;
-  }
+    if (!env) return null;
+    return `https://app.encore.cloud/${encodeURIComponent(slug)}/envs/${encodeURIComponent(env)}/traces/${encodeURIComponent(traceId)}`;
+  }, [appId, envName]);
 
   // Toggle/panel positioning
   const toggleStyle: Record<string, string> = {};
