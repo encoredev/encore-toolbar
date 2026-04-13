@@ -84,3 +84,25 @@ export function startDrag(
   document.addEventListener("mousemove", onMouseMove);
   document.addEventListener("mouseup", onMouseUp);
 }
+
+/** Parse the port from a URL string. Returns null if the URL is invalid or has no explicit/default port. */
+export function portFromUrl(url: string): number | null {
+  const u = safeParseUrl(url);
+  if (!u) return null;
+  if (u.port) {
+    const n = parseInt(u.port, 10);
+    return Number.isFinite(n) ? n : null;
+  }
+  // Default ports per protocol
+  if (u.protocol === "http:") return 80;
+  if (u.protocol === "https:") return 443;
+  return null;
+}
+
+/** Parse the port from a daemon `addr` string (e.g. "127.0.0.1:4000", ":4000", "[::1]:4000"). */
+export function portFromAddr(addr: string): number | null {
+  const i = addr.lastIndexOf(":");
+  if (i < 0) return null;
+  const n = parseInt(addr.slice(i + 1), 10);
+  return Number.isFinite(n) ? n : null;
+}
