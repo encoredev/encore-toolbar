@@ -249,7 +249,7 @@ export function Toolbar({ appId: initialAppId, envName: initialEnvName }: Toolba
             <InfoIcon />
             <div class="info-tooltip">
               Automatically captures requests to your Encore backend. Click any trace to view request/response data, backend logs, and generate debugging prompts for your AI assistant. Set your App ID to enable trace linking and log fetching.{" "}
-              <a href="https://encore.dev/docs" target="_blank" rel="noopener">Docs</a>
+              <a href="https://encore.dev/docs/ts/frontend/encore-toolbar" target="_blank" rel="noopener">Docs</a>
             </div>
           </span>
           <button class="close-btn" style={{ marginLeft: "auto" }} onClick={() => { setIsOpen(false); localStorage.setItem("encore-toolbar-open", "false"); }}><CloseIcon /></button>

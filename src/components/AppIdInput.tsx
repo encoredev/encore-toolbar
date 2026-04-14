@@ -54,7 +54,7 @@ export function AppIdInput({ initialAppId, initialEnvName, onAppIdChange, onEnvN
     <div ref={wrapperRef} class="app-id-wrapper">
       <div class="app-id-hint">
         If you have problems with trace linking, fill in the Encore App ID (found in the URL on app.encore.cloud) and the environment name.{" "}
-        <a href="https://encore.dev/docs" target="_blank" rel="noopener">Learn more</a>
+        <a href="https://encore.dev/docs/ts/frontend/encore-toolbar" target="_blank" rel="noopener">Learn more</a>
       </div>
       <div class="app-id-row">
         <div class="app-id-field">
